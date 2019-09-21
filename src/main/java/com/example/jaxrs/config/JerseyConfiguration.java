@@ -2,6 +2,7 @@ package com.example.jaxrs.config;
 
 import javax.ws.rs.ApplicationPath;
 
+import org.glassfish.jersey.media.multipart.MultiPartFeature;
 import org.glassfish.jersey.server.ResourceConfig;
 import org.springframework.stereotype.Component;
 
@@ -19,5 +20,6 @@ public class JerseyConfiguration extends ResourceConfig{
 		this.register(DataNotFoundExceptionMapper.class);
 		this.register(EmployeeExceptionMapper.class);
 		this.register(SecurityFilter.class);
+		this.register(MultiPartFeature.class);
 	}
 }

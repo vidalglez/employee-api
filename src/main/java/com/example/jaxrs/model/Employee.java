@@ -9,6 +9,9 @@ import javax.persistence.GenerationType;
 import javax.persistence.Id;
 import javax.persistence.Table;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -37,9 +40,13 @@ public class Employee {
 	private String lastName;
 	
 	@Column(name = "dateofbirth", columnDefinition = "DATE")
+	@JsonFormat(pattern = "yyyy-MM-dd")
+	@JsonProperty("dateOfBirth")
 	private LocalDate DateOfBirth;
 	
 	@Column(name = "dateofemployment", columnDefinition = "DATE")
+	@JsonFormat(pattern = "yyyy-MM-dd")
+	@JsonProperty("dateOfEmployment")
 	private LocalDate DateOfEmployment;
 	
 	@Column(name="status")

@@ -1,5 +1,10 @@
 package com.example.jaxrs.resource;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -17,16 +22,22 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 
+import org.glassfish.jersey.media.multipart.FormDataContentDisposition;
+import org.glassfish.jersey.media.multipart.FormDataParam;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import com.example.jaxrs.exception.DataNotFoundException;
 import com.example.jaxrs.model.Employee;
 import com.example.jaxrs.repository.EmployeeRepository;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 @Path("employees")
 public class EmployeeResource {
 
 	private EmployeeRepository repository;
+	
+	@Autowired
+	private ObjectMapper mapper;
 
 	@Autowired
 	public EmployeeResource(EmployeeRepository repository) {
@@ -57,7 +68,7 @@ public class EmployeeResource {
 	@Produces(MediaType.APPLICATION_JSON)
 	public Response getEmployee(@PathParam("id") Integer id) {
 		Optional<Employee> result = repository.findById(id);
-		
+
 		if (result.isPresent() && result.get().getStatus()) {
 			return Response.status(Status.OK).entity(result.get()).build();
 		} else {
@@ -91,5 +102,40 @@ public class EmployeeResource {
 		}
 		return null;
 	}
-	
+
+	@Path("/upload")
+	@POST
+	@Consumes(MediaType.MULTIPART_FORM_DATA)
+	@Produces(MediaType.TEXT_HTML)
+	public Response uploadFile(@FormDataParam("upload") InputStream is,
+			@FormDataParam("upload") FormDataContentDisposition formData) {
+		BufferedReader br = new BufferedReader(new InputStreamReader(is));
+		StringBuilder jsonEmployees = new StringBuilder();
+		String line = null;
+		try {
+			while ((line = br.readLine()) != null) {
+				jsonEmployees.append(line);
+			}
+			/*
+			ObjectMapper mapper = new ObjectMapper()
+					   .registerModule(new ParameterNamesModule())
+					   .registerModule(new Jdk8Module())
+					   .registerModule(new JavaTimeModule());
+			*/
+			
+			List<Employee> employees = Arrays.asList(mapper.readValue(jsonEmployees.toString(), Employee[].class));
+			employees.stream().forEach(employee -> {
+				employee.setStatus(true);
+				repository.save(employee);
+			});
+
+		} catch (IOException ex) {
+			ex.printStackTrace();
+			return Response.status(Status.INTERNAL_SERVER_ERROR)
+					.entity(String.format("Error uploading file", ex.getMessage())).build();
+		}
+		String result = String.format("File %s uploaded successfully!", formData.getFileName());
+		return Response.status(Status.OK).entity(result).build();
+	}
+
 }
