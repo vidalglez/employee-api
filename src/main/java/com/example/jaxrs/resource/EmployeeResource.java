@@ -1,13 +1,8 @@
 package com.example.jaxrs.resource;
 
-import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.util.Arrays;
 import java.util.List;
-import java.util.Optional;
-import java.util.stream.Collectors;
 
 import javax.validation.Valid;
 import javax.ws.rs.Consumes;
@@ -26,39 +21,45 @@ import org.glassfish.jersey.media.multipart.FormDataContentDisposition;
 import org.glassfish.jersey.media.multipart.FormDataParam;
 import org.springframework.beans.factory.annotation.Autowired;
 
-import com.example.jaxrs.exception.DataNotFoundException;
+import com.example.jaxrs.dto.EmployeeDTO;
+import com.example.jaxrs.mapper.EmployeeMapper;
 import com.example.jaxrs.model.Employee;
-import com.example.jaxrs.repository.EmployeeRepository;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.example.jaxrs.model.ErrorMessage;
+import com.example.jaxrs.service.EmployeeService;
 
 @Path("employees")
 public class EmployeeResource {
 
-	private EmployeeRepository repository;
+	private EmployeeMapper mapper;
+	
+	private EmployeeService service;
 	
 	@Autowired
-	private ObjectMapper mapper;
-
-	@Autowired
-	public EmployeeResource(EmployeeRepository repository) {
-		this.repository = repository;
+	public EmployeeResource(EmployeeService service, EmployeeMapper mapper) {
+		this.service = service;
+		this.mapper = mapper;
 	}
 
 	@POST
 	@Consumes(MediaType.APPLICATION_JSON)
 	@Produces(MediaType.APPLICATION_JSON)
-	public Employee addEmployee(Employee employee) {
+	public Response addEmployee(Employee employee) {	
 		if (employee != null) {
-			return repository.save(employee);
+			EmployeeDTO empDTO = mapper.employeeToDTO(service.addEmployee(employee));
+			return Response.status(Status.CREATED).entity(empDTO).build();
 		}
-		return new Employee();
+		return Response.status(Status.BAD_REQUEST).build();
 	}
 
 	@GET
 	@Produces(MediaType.APPLICATION_JSON)
-	public List<Employee> getEmployees() {
+	public List<EmployeeDTO> getEmployees() {
+		List<EmployeeDTO> employees = mapper.employeeListToDTO(service.getEmployees());
+		/*
 		List<Employee> employees = repository.findAll().stream().filter(employee -> employee.getStatus())
 				.collect(Collectors.toList());
+		return employees;
+		*/
 		return employees;
 	}
 
@@ -67,6 +68,7 @@ public class EmployeeResource {
 	@Path("{id}")
 	@Produces(MediaType.APPLICATION_JSON)
 	public Response getEmployee(@PathParam("id") Integer id) {
+		/*
 		Optional<Employee> result = repository.findById(id);
 
 		if (result.isPresent() && result.get().getStatus()) {
@@ -74,33 +76,33 @@ public class EmployeeResource {
 		} else {
 			throw new DataNotFoundException(String.format("Record id %d was not found", id));
 		}
+		*/
+		
+		EmployeeDTO empDTO = mapper.employeeToDTO(service.getEmployee(id));
+		return Response.status(Status.FOUND).entity(empDTO).build();
 	}
 
 	@PUT
 	@Path("{id}")
 	@Consumes(MediaType.APPLICATION_JSON)
 	@Produces(MediaType.APPLICATION_JSON)
-	public Employee updateEmployee(@PathParam("id") Integer id, Employee employee) {
-		if (repository.findById(id).isPresent()) {
-			employee.setId(id);
-			employee.setStatus(repository.findById(id).get().getStatus());
-			return repository.save(employee);
+	public Response updateEmployee(@PathParam("id") Integer id, Employee employee) {
+		EmployeeDTO empDTO = mapper.employeeToDTO(service.updateEmployee(id, employee));
+		if(empDTO != null) {
+			return Response.status(Status.FOUND).entity(empDTO).build();
 		}
-		return null;
+		return Response.status(Status.NOT_MODIFIED).build();
 	}
 
 	@DELETE
 	@Path("{id}")
 	@Produces(MediaType.APPLICATION_JSON)
-	public Employee deleteEmployee(@PathParam("id") Integer id) {
-		Optional<Employee> emp = repository.findById(id);
-		if (emp.isPresent()) {
-			Employee employee = emp.get();
-			employee.setId(id);
-			employee.setStatus(false);
-			return repository.save(employee);
+	public Response deleteEmployee(@PathParam("id") Integer id) {
+		EmployeeDTO empDTO = mapper.employeeToDTO(service.deleteEmployee(id));
+		if(empDTO != null) {
+			return Response.status(Status.GONE).entity(empDTO).build();
 		}
-		return null;
+		return Response.status(Status.NOT_FOUND).build();
 	}
 
 	@Path("/upload")
@@ -109,30 +111,13 @@ public class EmployeeResource {
 	@Produces(MediaType.TEXT_HTML)
 	public Response uploadFile(@FormDataParam("upload") InputStream is,
 			@FormDataParam("upload") FormDataContentDisposition formData) {
-		BufferedReader br = new BufferedReader(new InputStreamReader(is));
-		StringBuilder jsonEmployees = new StringBuilder();
-		String line = null;
 		try {
-			while ((line = br.readLine()) != null) {
-				jsonEmployees.append(line);
-			}
-			/*
-			ObjectMapper mapper = new ObjectMapper()
-					   .registerModule(new ParameterNamesModule())
-					   .registerModule(new Jdk8Module())
-					   .registerModule(new JavaTimeModule());
-			*/
-			
-			List<Employee> employees = Arrays.asList(mapper.readValue(jsonEmployees.toString(), Employee[].class));
-			employees.stream().forEach(employee -> {
-				employee.setStatus(true);
-				repository.save(employee);
-			});
-
-		} catch (IOException ex) {
-			ex.printStackTrace();
-			return Response.status(Status.INTERNAL_SERVER_ERROR)
-					.entity(String.format("Error uploading file", ex.getMessage())).build();
+			service.uploadEmployeesData(is);
+		} catch (IOException e) {
+			ErrorMessage message = new ErrorMessage();
+			message.setErrorCode(Status.BAD_REQUEST.getStatusCode());
+			message.setMessage(e.getMessage());
+			return Response.status(Status.BAD_REQUEST).entity(message).build();
 		}
 		String result = String.format("File %s uploaded successfully!", formData.getFileName());
 		return Response.status(Status.OK).entity(result).build();
