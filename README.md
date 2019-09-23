@@ -86,3 +86,16 @@ Example Body:
 
 Delete employee [DELETE]: http://localhost:8080/employee-api/employees/id, you will need to provide 
 Authorization Header as Basic Auth and provide same username and password as configured in application.properties
+
+### Frameworks and tools used
+- JAX-RS Jersey
+- Spring
+- JPA & Hibernate
+- Lombok
+
+
+### TODOS
+- HATEOS links
+- Unit tests
+- Integration tests
+- Swagger
