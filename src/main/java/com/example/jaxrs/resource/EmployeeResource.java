@@ -13,9 +13,11 @@ import javax.ws.rs.PUT;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
+import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
+import javax.ws.rs.core.UriInfo;
 
 import org.glassfish.jersey.media.multipart.FormDataContentDisposition;
 import org.glassfish.jersey.media.multipart.FormDataParam;
@@ -25,10 +27,14 @@ import com.example.jaxrs.dto.EmployeeDTO;
 import com.example.jaxrs.mapper.EmployeeMapper;
 import com.example.jaxrs.model.Employee;
 import com.example.jaxrs.model.ErrorMessage;
+import com.example.jaxrs.model.Link;
 import com.example.jaxrs.service.EmployeeService;
 
 @Path("employees")
 public class EmployeeResource {
+	
+	@Context
+	private UriInfo uriInfo;
 
 	private EmployeeMapper mapper;
 	
@@ -46,6 +52,7 @@ public class EmployeeResource {
 	public Response addEmployee(Employee employee) {	
 		if (employee != null) {
 			EmployeeDTO empDTO = mapper.employeeToDTO(service.addEmployee(employee));
+			empDTO.setLinks(this.getGeneratedLink("self", empDTO.getId()));
 			return Response.status(Status.CREATED).entity(empDTO).build();
 		}
 		return Response.status(Status.BAD_REQUEST).build();
@@ -55,11 +62,9 @@ public class EmployeeResource {
 	@Produces(MediaType.APPLICATION_JSON)
 	public List<EmployeeDTO> getEmployees() {
 		List<EmployeeDTO> employees = mapper.employeeListToDTO(service.getEmployees());
-		/*
-		List<Employee> employees = repository.findAll().stream().filter(employee -> employee.getStatus())
-				.collect(Collectors.toList());
-		return employees;
-		*/
+		employees.forEach(empDTO -> {
+			empDTO.setLinks(this.getGeneratedLink("self", empDTO.getId()));
+		});
 		return employees;
 	}
 
@@ -67,18 +72,9 @@ public class EmployeeResource {
 	@Valid
 	@Path("{id}")
 	@Produces(MediaType.APPLICATION_JSON)
-	public Response getEmployee(@PathParam("id") Integer id) {
-		/*
-		Optional<Employee> result = repository.findById(id);
-
-		if (result.isPresent() && result.get().getStatus()) {
-			return Response.status(Status.OK).entity(result.get()).build();
-		} else {
-			throw new DataNotFoundException(String.format("Record id %d was not found", id));
-		}
-		*/
-		
+	public Response getEmployee(@PathParam("id") Integer id) {		
 		EmployeeDTO empDTO = mapper.employeeToDTO(service.getEmployee(id));
+		empDTO.setLinks(this.getGeneratedLink("self", empDTO.getId()));
 		return Response.status(Status.FOUND).entity(empDTO).build();
 	}
 
@@ -89,6 +85,7 @@ public class EmployeeResource {
 	public Response updateEmployee(@PathParam("id") Integer id, Employee employee) {
 		EmployeeDTO empDTO = mapper.employeeToDTO(service.updateEmployee(id, employee));
 		if(empDTO != null) {
+			empDTO.setLinks(this.getGeneratedLink("self", empDTO.getId()));
 			return Response.status(Status.FOUND).entity(empDTO).build();
 		}
 		return Response.status(Status.NOT_MODIFIED).build();
@@ -121,6 +118,11 @@ public class EmployeeResource {
 		}
 		String result = String.format("File %s uploaded successfully!", formData.getFileName());
 		return Response.status(Status.OK).entity(result).build();
+	}
+	
+	private Link getGeneratedLink(String type, Integer id) {
+		String urlLink = uriInfo.getBaseUriBuilder().path(EmployeeResource.class).path(id.toString()).build().toString();
+		return new Link(type, urlLink);
 	}
 
 }
