@@ -30,16 +30,22 @@ import com.example.jaxrs.model.ErrorMessage;
 import com.example.jaxrs.model.Link;
 import com.example.jaxrs.service.EmployeeService;
 
+import io.swagger.annotations.Api;
+import io.swagger.annotations.ApiOperation;
+import io.swagger.annotations.ApiResponse;
+import io.swagger.annotations.ApiResponses;
+
 @Path("employees")
+@Api(value = "Employee API - CRUD operations for Employee", produces = MediaType.APPLICATION_JSON)
 public class EmployeeResource {
-	
+
 	@Context
 	private UriInfo uriInfo;
 
 	private EmployeeMapper mapper;
-	
+
 	private EmployeeService service;
-	
+
 	@Autowired
 	public EmployeeResource(EmployeeService service, EmployeeMapper mapper) {
 		this.service = service;
@@ -49,7 +55,7 @@ public class EmployeeResource {
 	@POST
 	@Consumes(MediaType.APPLICATION_JSON)
 	@Produces(MediaType.APPLICATION_JSON)
-	public Response addEmployee(Employee employee) {	
+	public Response addEmployee(Employee employee) {
 		if (employee != null) {
 			EmployeeDTO empDTO = mapper.employeeToDTO(service.addEmployee(employee));
 			empDTO.setLinks(this.getGeneratedLink("self", empDTO.getId()));
@@ -68,11 +74,14 @@ public class EmployeeResource {
 		return employees;
 	}
 
+	@ApiOperation(value = "Find employees by Id", notes = "Provide an id to look up specific employee info", response = EmployeeDTO.class)
+	@ApiResponses(value = { @ApiResponse(code = 200, message = "Employee found"),
+			@ApiResponse(code = 404, message = "Employee Not Found") })
 	@GET
 	@Valid
 	@Path("{id}")
 	@Produces(MediaType.APPLICATION_JSON)
-	public Response getEmployee(@PathParam("id") Integer id) {		
+	public Response getEmployee(@PathParam("id") Integer id) {
 		EmployeeDTO empDTO = mapper.employeeToDTO(service.getEmployee(id));
 		empDTO.setLinks(this.getGeneratedLink("self", empDTO.getId()));
 		return Response.status(Status.FOUND).entity(empDTO).build();
@@ -84,7 +93,7 @@ public class EmployeeResource {
 	@Produces(MediaType.APPLICATION_JSON)
 	public Response updateEmployee(@PathParam("id") Integer id, Employee employee) {
 		EmployeeDTO empDTO = mapper.employeeToDTO(service.updateEmployee(id, employee));
-		if(empDTO != null) {
+		if (empDTO != null) {
 			empDTO.setLinks(this.getGeneratedLink("self", empDTO.getId()));
 			return Response.status(Status.FOUND).entity(empDTO).build();
 		}
@@ -96,7 +105,7 @@ public class EmployeeResource {
 	@Produces(MediaType.APPLICATION_JSON)
 	public Response deleteEmployee(@PathParam("id") Integer id) {
 		EmployeeDTO empDTO = mapper.employeeToDTO(service.deleteEmployee(id));
-		if(empDTO != null) {
+		if (empDTO != null) {
 			return Response.status(Status.GONE).entity(empDTO).build();
 		}
 		return Response.status(Status.NOT_FOUND).build();
@@ -119,9 +128,10 @@ public class EmployeeResource {
 		String result = String.format("File %s uploaded successfully!", formData.getFileName());
 		return Response.status(Status.OK).entity(result).build();
 	}
-	
+
 	private Link getGeneratedLink(String type, Integer id) {
-		String urlLink = uriInfo.getBaseUriBuilder().path(EmployeeResource.class).path(id.toString()).build().toString();
+		String urlLink = uriInfo.getBaseUriBuilder().path(EmployeeResource.class).path(id.toString()).build()
+				.toString();
 		return new Link(type, urlLink);
 	}
 

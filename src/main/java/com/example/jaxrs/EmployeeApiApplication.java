@@ -12,6 +12,7 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 @SpringBootApplication
 public class EmployeeApiApplication {
 
+	
 	public static void main(String[] args) {
 		SpringApplication.run(EmployeeApiApplication.class, args);
 	}
